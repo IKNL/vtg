@@ -14,7 +14,18 @@ ContainerClient <- R6::R6Class(
             self$log$info('Extracting task information from JWT token')
             strings <- unlist(strsplit(token, ".", fixed=TRUE))
             JSON <- rawToChar(base64enc::base64decode(strings[2]))
-            identity <- rjson::fromJSON(JSON)$identity
+
+            jwt_token <- rjson::fromJSON(JSON)
+            if("sub" %in% names(jwt_token)) {
+                identity <- jwt_token$sub
+            } else if ("identity" %in% names(jwt_token)) {
+                identity <- jwt_token$identity
+            } else {
+                stop("Could not extract identity from JWT token")
+            }
+
+            identity <- jwt_token$identity
+
 
             self$log$debug(glue::glue('  Using collaboration
                                       {identity$collaboration_id}'))
