@@ -24,9 +24,6 @@ ContainerClient <- R6::R6Class(
                 stop("Could not extract identity from JWT token")
             }
 
-            identity <- jwt_token$identity
-
-
             self$log$debug(glue::glue('  Using collaboration
                                       {identity$collaboration_id}'))
             self$setCollaborationId(identity$collaboration_id)
