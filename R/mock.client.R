@@ -35,7 +35,7 @@ MockClient <- R6::R6Class(
       self$task.name <- task.name
     },
     setOrganizations = function(orgs) {
-      if (orgs %in% seq_along(self$datasets)) {
+      if (all(orgs %in% seq_along(self$datasets))) {
         self$organizations <- orgs
       } else {
         self$log$warn("Organizations not in range of datasets")
