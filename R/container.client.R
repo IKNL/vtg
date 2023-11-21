@@ -5,6 +5,9 @@ ContainerClient <- R6::R6Class(
     "ContainerClient",
     inherit=Client,
     public = list(
+        # Attributes
+        organization_id = NULL,
+        node_id = NULL,
 
         initialize = function(host, token, api_path) {
             super$initialize(host, api_path=api_path)
@@ -27,6 +30,8 @@ ContainerClient <- R6::R6Class(
             self$log$debug(glue::glue('  Using collaboration
                                       {identity$collaboration_id}'))
             self$setCollaborationId(identity$collaboration_id)
+            self$organization_id <- identity$organization_id
+            self$node_id <- identity$node_id
 
             self$log$debug(glue::glue('  Using image {identity$image}'))
             self$set.task.image(identity$image, "subtask")
