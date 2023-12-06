@@ -415,10 +415,10 @@ Client <- R6::R6Class(
                     self$log$error(msg)
                     errors <- c(errors, msg)
 
-                } 
-                
+                }
+
                 results[[k]] <- marshalled.result
-                
+
             }
 
             if (length(errors)) {
