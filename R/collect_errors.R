@@ -5,7 +5,7 @@ collect_errors <- function(results) {
 
   for (i in seq_along(results)) {
     result <- results[[i]]
-    if (!is.list(result) && exists("error", result)) {
+    if (is.list(result) && exists("error", result)) {
       vtg::log$info("Error found in the subtasks")
       vtg::log$debug(" - Node '{result$node}'")
       vtg::log$debug(" - Org. '{result$organization}'")
