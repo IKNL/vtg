@@ -13,5 +13,15 @@ collect_errors <- function(results) {
       errors <- c(errors, list(result))
     }
   }
-  return(errors)
+
+  if (length(errors) == 0) {
+    vtg::log$debug("No errors found.")
+    return(NULL)
+  }
+
+  report <- list(
+    error = glue::glue("{length(errors)} node(s) reported error(s)."),
+    errors = errors
+  )
+  return(report)
 }
