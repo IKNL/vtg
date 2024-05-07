@@ -7,15 +7,14 @@
 #' results.
 #'
 #' @examples
-#' client <- vtg::Client$new('http://localhost:5000', api_path='/api')
-#' client$authenticate('root', 'password')
+#' client <- vtg::Client$new("http://localhost:5000", api_path = "/api")
+#' client$authenticate("root", "password")
 #'
 #' collaborations <- client$getCollaborations()
 #' print(collaborations)
 #'
-#' client$set.task.image(image.name, task.name="colnames")
+#' client$set.task.image(image.name, task.name = "colnames")
 #' result <- client$call("colnames")
-#'
 #'
 Client <- R6::R6Class(
     "Client",
@@ -28,12 +27,10 @@ Client <- R6::R6Class(
         collaboration = NULL,
         api_path = NULL,
         version = NULL,
-
         user_url = NULL,
         access_token = NULL,
         refresh_token = NULL,
         refresh_url = NULL,
-
         image = NULL,
         task.name = NULL,
         use.master.container = F,
@@ -42,7 +39,6 @@ Client <- R6::R6Class(
         SEPARATOR = "$",
         data_format = NULL,
         organizations = NULL,
-
         log = NULL,
 
         #' @param host [character()] Host to connect to
@@ -52,46 +48,46 @@ Client <- R6::R6Class(
         #' @param organizations [integer()] (optional) organization ids that are within a collaboration
         #' @param api_path [character()] (optional) API path
         #' @param log_level [character()] (optional) Logger level
-        initialize = function(host, username='', password='', collaboration_id=NULL, organizations=NULL, api_path='', log_level='info') {
+        initialize = function(host, username = "", password = "", collaboration_id = NULL, organizations = NULL, api_path = "", log_level = "info") {
             self$host <- host
             self$username <- username
             self$password <- password
             self$collaboration_id <- collaboration_id
-            self$organizations = organizations
+            self$organizations <- organizations
             self$api_path <- api_path
             self$log <- lgr::get_logger_glue("vtg/Client")
             lgr::basic_config(threshold = log_level)
 
-            url <- glue::glue('{host}{api_path}/version')
+            url <- glue::glue("{host}{api_path}/version")
             r <- httr::GET(url)
             self$version <- httr::content(r)$version
 
             api_version <- self$getVersion()
-            self$log$debug('Using API version: {api_version}')
+            self$log$debug("Using API version: {api_version}")
         },
 
         #' @param username character (optional) Username. If not provided, the
         #'   username and password provided to the constructor are used.
         #' @param password character (optional) Password. Required if username
         #'   is provided.
-        authenticate = function(username='', password='') {
+        authenticate = function(username = "", password = "") {
             # Create the URL and data for the JSON body
             # url <- paste(env$host, env$api_path, '/token', sep='')
-            url <- paste(self$host, self$api_path, '/token/user', sep='')
+            url <- paste(self$host, self$api_path, "/token/user", sep = "")
 
-            if (username != '') {
+            if (username != "") {
                 self$username <- username
                 self$password <- password
             }
 
             data <- list(
-                username=self$username,
-                password=self$password
+                username = self$username,
+                password = self$password
             )
 
-            r <- httr::POST(url, body=data, encode="json")
+            r <- httr::POST(url, body = data, encode = "json")
 
-            if (!is.element(r$status_code, c(200,201,202))) {
+            if (!is.element(r$status_code, c(200, 201, 202))) {
                 stop(sprintf("Could not authenticate: %s", httr::http_status(r)$message))
             }
 
@@ -106,24 +102,21 @@ Client <- R6::R6Class(
 
             return("OK")
         },
-
         setPrivateKey = function(bytes_or_filename) {
             self$privkey <- openssl::read_pem(bytes_or_filename)[["RSA PRIVATE KEY"]]
         },
-
         getVersion = function() {
             if (is.null(self$version)) {
-                self$version <- httr::content(self$GET('/version'))$version
+                self$version <- httr::content(self$GET("/version"))$version
             }
 
             return(self$version)
         },
-
         getCollaborations = function() {
-            user <- httr::content(self$GET(self$user_url, prefix.api.path=F))
+            user <- httr::content(self$GET(self$user_url, prefix.api.path = F))
             organization_id <- user$organization$id
 
-            self$log$debug(glue::glue('Using organization_id {organization_id}'))
+            self$log$debug(glue::glue("Using organization_id {organization_id}"))
 
             organization <- self$getOrganization(organization_id)
 
@@ -132,8 +125,8 @@ Client <- R6::R6Class(
             for (collab in organization$collaborations) {
                 # self$log$debug(glue::glue('Processing collaboration {collab$id}'))
                 collaboration_id <- as.character(collab$id)
-                endpoint <- glue::glue('/collaboration/{collaboration_id}')
-                collaboration <- httr::content(self$GET(collab$link, prefix.api.path=F))
+                endpoint <- glue::glue("/collaboration/{collaboration_id}")
+                collaboration <- httr::content(self$GET(collab$link, prefix.api.path = F))
 
                 organization_ids <- c()
                 for (org in collaboration$organizations) {
@@ -141,39 +134,36 @@ Client <- R6::R6Class(
                 }
 
 
-                collaborations[[j]] <- list(id=collaboration_id,
-                                            name=collaboration$name,
-                                            organizations=organization_ids)
+                collaborations[[j]] <- list(
+                    id = collaboration_id,
+                    name = collaboration$name,
+                    organizations = organization_ids
+                )
                 j <- j + 1
             }
             return(collaborations)
-
         },
-
         getOrganization = function(organization_id) {
             return(httr::content(
-                self$GET(sprintf('/organization/%i', organization_id))
+                self$GET(sprintf("/organization/%i", organization_id))
             ))
         },
-
         getCollaboration = function(collaboration_id) {
             return(httr::content(
-                self$GET(sprintf('/collaboration/%i', collaboration_id))
+                self$GET(sprintf("/collaboration/%i", collaboration_id))
             ))
         },
-
         setOrganizations = function(organizations) {
-            self$organizations = organizations
+            self$organizations <- organizations
         },
-
         setCollaborationId = function(collaboration_id) {
             self$collaboration_id <- collaboration_id
             self$collaboration <- self$getCollaboration(collaboration_id)
-             self$setUseEncryption(self$collaboration$encrypted)
+            self$setUseEncryption(self$collaboration$encrypted)
 
             for (orgnr in 1:length(self$collaboration$organizations)) {
                 org <- self$collaboration$organizations[[orgnr]]
-                endpoint <- glue::glue('/organization/{org$id}')
+                endpoint <- glue::glue("/organization/{org$id}")
                 organization <- httr::content(self$GET(endpoint))
 
                 # Decode the base64-encoded public key
@@ -183,13 +173,11 @@ Client <- R6::R6Class(
                 self$collaboration$organizations[[orgnr]] <- organization
             }
         },
-
         setUseEncryption = function(flag) {
             self$using_encryption <- flag
         },
-
-        setUseMasterContainer = function(flag=T) {
-            self$use.master.container = flag
+        setUseMasterContainer = function(flag = T) {
+            self$use.master.container <- flag
         },
 
         # Refresh the access token using the refresh token
@@ -198,12 +186,12 @@ Client <- R6::R6Class(
                 stop("Not authenticated!")
             }
 
-            url <- paste(self$host, self$refresh_url, sep='')
-            token <- sprintf('Bearer %s', self$refresh_token)
+            url <- paste(self$host, self$refresh_url, sep = "")
+            token <- sprintf("Bearer %s", self$refresh_token)
 
-            r <- httr::POST(url, httr::add_headers(Authorization=token))
+            r <- httr::POST(url, httr::add_headers(Authorization = token))
 
-            if (!is.element(r$status_code, c(200,201,202))) {
+            if (!is.element(r$status_code, c(200, 201, 202))) {
                 stop("Could not refresh token!?")
             }
 
@@ -216,34 +204,31 @@ Client <- R6::R6Class(
         },
 
         # Perform a request to the server
-        request = function(method, path, data=NULL, first_try=T, prefix.api.path=T) {
+        request = function(method, path, data = NULL, first_try = T, prefix.api.path = T) {
             self$log$debug(glue::glue("method={method}"))
             self$log$debug(glue::glue("path={path}"))
             self$log$debug(glue::glue("prefix_path={prefix.api.path}, api_path={self$api_path}"))
             self$log$debug(glue::glue("host={self$host}"))
 
             if (prefix.api.path) {
-                url <- paste(self$host, self$api_path, path, sep='')
+                url <- paste(self$host, self$api_path, path, sep = "")
             } else {
-                url <- paste(self$host, path, sep='')
+                url <- paste(self$host, path, sep = "")
             }
 
-            token <- sprintf('Bearer %s', self$access_token)
+            token <- sprintf("Bearer %s", self$access_token)
 
-            self$log$debug("request:", method=method, url=url)
+            self$log$debug("request:", method = method, url = url)
 
-            if (method == 'GET') {
-                r <- httr::GET(url, httr::add_headers(Authorization=token))
-
-            } else if (method == 'POST') {
-                r <- httr::POST(url, body=data, encode="json", httr::add_headers(Authorization=token))
-
-            } else if (method == 'PUT') {
-                r <- httr::PUT(url, body=data, encode="json", httr::add_headers(Authorization=token))
-
+            if (method == "GET") {
+                r <- httr::GET(url, httr::add_headers(Authorization = token))
+            } else if (method == "POST") {
+                r <- httr::POST(url, body = data, encode = "json", httr::add_headers(Authorization = token))
+            } else if (method == "PUT") {
+                r <- httr::PUT(url, body = data, encode = "json", httr::add_headers(Authorization = token))
             }
 
-            if (!is.element(r$status_code, c(200,201,202))) {
+            if (!is.element(r$status_code, c(200, 201, 202))) {
                 msg <- sprintf("Request to '%s' was unsuccessful: %s", url, httr::http_status(r)$message)
                 self$log$debug(httr::content(r)$msg)
 
@@ -252,31 +237,28 @@ Client <- R6::R6Class(
                     self$log$warn("Refreshing token ... ")
                     self$refresh.token()
 
-                    r <- self$request(method, path, data, first_try=F)
-
+                    r <- self$request(method, path, data, first_try = F)
                 } else {
                     stop(msg)
-
                 }
-
             }
 
             return(r)
         },
 
         # Perform a GET request to the server
-        GET = function(path, prefix.api.path=T) {
-            return(self$request("GET", path, prefix.api.path=prefix.api.path))
+        GET = function(path, prefix.api.path = T) {
+            return(self$request("GET", path, prefix.api.path = prefix.api.path))
         },
 
         # Perform a POST request to the server
-        POST = function(path, data=NULL, prefix.api.path=T) {
-            return(self$request("POST", path, data, prefix.api.path=prefix.api.path))
+        POST = function(path, data = NULL, prefix.api.path = T) {
+            return(self$request("POST", path, data, prefix.api.path = prefix.api.path))
         },
 
         # Perform a PUT request to the server
-        PUT = function(path, data=NULL, prefix.api.path=T) {
-            return(self$request("PUT", path, data, prefix.api.path=prefix.api.path))
+        PUT = function(path, data = NULL, prefix.api.path = T) {
+            return(self$request("PUT", path, data, prefix.api.path = prefix.api.path))
         },
 
         # Wait for the results of a distributed task and return the task,
@@ -290,32 +272,31 @@ Client <- R6::R6Class(
         #   task (list) including results
         wait.for.results = function(task) {
             # options(use_progress_bar=F)
-            use_progress_bar <- getOption('vtg.use_progress_bar', T)
+            use_progress_bar <- getOption("vtg.use_progress_bar", T)
 
-            path = sprintf('/task/%s', task$id)
+            path <- sprintf("/task/%s", task$id)
 
             # Create the progress bar
             if (use_progress_bar) {
                 pb <- progress::progress_bar$new(
-                    format="  waiting for results for task ':task' in :elapsed",
-                    clear=FALSE,
-                    total=1e7,
-                    width=60
+                    format = "  waiting for results for task ':task' in :elapsed",
+                    clear = FALSE,
+                    total = 1e7,
+                    width = 60
                 )
             }
 
-            while(TRUE) {
+            while (TRUE) {
                 r <- self$GET(path)
 
                 if (httr::content(r)$complete) {
                     break
-
                 } else {
                     # writeln("Waiting for results ...")
                     if (use_progress_bar) {
-                        pb$tick(tokens=list(task=path))
+                        pb$tick(tokens = list(task = path))
                     } else {
-                        cat('.')
+                        cat(".")
                         flush.console()
                     }
 
@@ -325,19 +306,18 @@ Client <- R6::R6Class(
 
             if (use_progress_bar) {
                 # Finish the progress bar
-                pb$tick(1e7, tokens=list(task=path))
+                pb$tick(1e7, tokens = list(task = path))
             } else {
-                writeln('')
+                writeln("")
             }
 
-            path = sprintf('/task/%s/result', task$id)
+            path <- sprintf("/task/%s/result", task$id)
             r <- self$GET(path)
 
             return(httr::content(r))
         },
-
         decrypt.result = function(serialized.output) {
-            parts <- unlist(strsplit(serialized.output, self$SEPARATOR, fixed=T))
+            parts <- unlist(strsplit(serialized.output, self$SEPARATOR, fixed = T))
 
             encrypted.key <- openssl::base64_decode(parts[1])
             iv <- openssl::base64_decode(parts[2])
@@ -349,7 +329,6 @@ Client <- R6::R6Class(
             # Use the shared key and iv to decrypt the payload
             serialized.output <- openssl::aes_ctr_decrypt(encrypted.msg, key, iv)
         },
-
         process.results = function(site_results) {
             results <- list()
             errors <- c()
@@ -358,77 +337,77 @@ Client <- R6::R6Class(
             vtg::log$info("Received {num.results} results.")
 
             for (k in 1:length(site_results)) {
-                self$log$debug('Processing result for site {k} (organization_id={site_results[[k]]$organization})')
-                self$log$debug(paste("Log:\n", site_results[[k]]$log, sep="", collapse=""))
+                self$log$debug("Processing result for site {k} (organization_id={site_results[[k]]$organization})")
+                self$log$debug(paste("Log:\n", site_results[[k]]$log, sep = "", collapse = ""))
 
-                marshalled.result <- tryCatch({
-                    serialized.output <- site_results[[k]]$result
+                marshalled.result <- tryCatch(
+                    {
+                        serialized.output <- site_results[[k]]$result
 
-                    if (self$using_encryption) {
-                        self$log$debug('Decrypting result')
-                        # Retrieve the components key, iv and msg from the string
-                        parts <- unlist(strsplit(serialized.output, self$SEPARATOR, fixed=T))
+                        if (self$using_encryption) {
+                            self$log$debug("Decrypting result")
+                            # Retrieve the components key, iv and msg from the string
+                            parts <- unlist(strsplit(serialized.output, self$SEPARATOR, fixed = T))
 
-                        encrypted.key <- openssl::base64_decode(parts[1])
-                        iv <- openssl::base64_decode(parts[2])
-                        encrypted.msg <- openssl::base64_decode(parts[3])
+                            encrypted.key <- openssl::base64_decode(parts[1])
+                            iv <- openssl::base64_decode(parts[2])
+                            encrypted.msg <- openssl::base64_decode(parts[3])
 
-                        # Decrypt the encrypted key
-                        key <- openssl::rsa_decrypt(encrypted.key, self$privkey)
+                            # Decrypt the encrypted key
+                            key <- openssl::rsa_decrypt(encrypted.key, self$privkey)
 
-                        # Use the shared key and iv to decrypt the payload
-                        serialized.output <- openssl::aes_ctr_decrypt(encrypted.msg, key, iv)
+                            # Use the shared key and iv to decrypt the payload
+                            serialized.output <- openssl::aes_ctr_decrypt(encrypted.msg, key, iv)
+                        } else {
+                            self$log$debug("Decoding base64 encoded result")
+                            serialized.output <- openssl::base64_decode(serialized.output)
+                        }
 
-                    } else {
-                        self$log$debug('Decoding base64 encoded result')
-                        serialized.output <- openssl::base64_decode(serialized.output)
+                        # mimic hexview object
+                        rawBlock <- list(
+                            width = NULL, offset = 0, nbytes = length(serialized.output),
+                            fileRaw = serialized.output, fileNum = NULL,
+                            machine = "hex", type = "char",
+                            size = 1, endian = .Platform$endian, signed = TRUE
+                        )
+                        class(rawBlock) <- "rawBlock"
+                        self$log$debug("format back")
+                        marshalled.result <- load_vantage6_formatted(rawBlock)
+
+                        # This has to be the last statement, is the returned value
+                        marshalled.result
+                    },
+                    error = function(e) {
+                        self$log$error("could not read results:")
+                        self$log$error("Site results:")
+                        print(site_results[[k]])
+                        self$log$error(jsonlite::toJSON(site_results[[k]], pretty = T, auto_unbox = T))
+                        self$log$error("")
+                        self$log$error(e)
                     }
-
-                    # mimic hexview object
-                    rawBlock <- list(width=NULL, offset=0, nbytes=length(serialized.output),
-                                      fileRaw=serialized.output, fileNum=NULL,
-                                      machine="hex", type="char",
-                                      size=1, endian=.Platform$endian, signed=TRUE)
-                    class(rawBlock) <- "rawBlock"
-                    self$log$debug('format back')
-                    marshalled.result <- load_vantage6_formatted(rawBlock)
-
-                    # This has to be the last statement, is the returned value
-                    marshalled.result
-
-                }, error = function(e) {
-                    self$log$error("could not read results:")
-                    self$log$error('Site results:')
-                    print(site_results[[k]])
-                    self$log$error(jsonlite::toJSON(site_results[[k]], pretty=T, auto_unbox=T))
-                    self$log$error('')
-                    self$log$error(e)
-                })
+                )
 
 
-                if ("error" %in% names(marshalled.result))  {
-                    self$log$error('Shoot :@')
+                if ("error" %in% names(marshalled.result)) {
+                    self$log$error("Shoot :@")
                     node <- site_results[[k]]$node
                     error <- marshalled.result$error
                     msg <- sprintf("Node '%s' returned an error: '%s'", node, error)
 
                     self$log$error(msg)
                     errors <- c(errors, msg)
-
                 }
 
                 results[[k]] <- marshalled.result
-
             }
 
             if (length(errors)) {
-                stop(paste(errors, collapse='\n  '))
+                stop(paste(errors, collapse = "\n  "))
             }
 
             return(results)
         },
-
-        set.task.image = function(image, task.name='') {
+        set.task.image = function(image, task.name = "") {
             self$image <- image
             self$task.name <- task.name
         },
@@ -447,23 +426,23 @@ Client <- R6::R6Class(
 
             # Encrypt the input using AES (symmetric encryption). This returns
             # an encrypted 'message' and an initialization vector (iv).
-            encrypted.msg <- openssl::aes_ctr_encrypt(data, key=key)
+            encrypted.msg <- openssl::aes_ctr_encrypt(data, key = key)
             iv <- attr(encrypted.msg, "iv")
 
             # Base64 encode the initialization vector and message individually.
             # Combine them into a single string, separated by a '$'.
             iv <- openssl::base64_encode(iv)
             encrypted.msg <- openssl::base64_encode(encrypted.msg)
-            encoded.input = paste(iv, encrypted.msg, sep=self$SEPARATOR)
+            encoded.input <- paste(iv, encrypted.msg, sep = self$SEPARATOR)
 
             # Encrypt the shared key with the organization's public key (using RSA)
-            pubkey = openssl::read_pem(org$public_key)[['PUBLIC KEY']]
+            pubkey <- openssl::read_pem(org$public_key)[["PUBLIC KEY"]]
             encrypted.key <- openssl::rsa_encrypt(key, pubkey)
 
             # Base64 encode the RSA encrypted key and prepend it to the previously
             # encrypted body.
-            encrypted.key = openssl::base64_encode(encrypted.key)
-            encrypted.data <- paste(encrypted.key, encoded.input, sep=self$SEPARATOR)
+            encrypted.key <- openssl::base64_encode(encrypted.key)
+            encrypted.data <- paste(encrypted.key, encoded.input, sep = self$SEPARATOR)
 
             return(encrypted.data)
         },
@@ -490,7 +469,7 @@ Client <- R6::R6Class(
 
             serialized.input <- dump_vantage6_formatted(input, self$data_format)
 
-            if (is.null(self$organizations)){
+            if (is.null(self$organizations)) {
                 for (org in self$collaboration$organizations) {
                     self$organizations <- append(self$organizations, org$id)
                 }
@@ -505,45 +484,47 @@ Client <- R6::R6Class(
 
                 if (cur_org$id %in% self$organizations) {
                     if (self$using_encryption) {
-
                         # Returns a string containing 3 base64 encoded components, separated by
                         # a '$':
                         #   1: (RSA) encrypted key,
                         #   2: initialization vector (iv),
                         #   3: (AES) encrypted body
-                        self$log$debug('Encrypting input for organization', cur_org$id)
+                        self$log$debug("Encrypting input for organization", cur_org$id)
                         input <- self$encrypt(serialized.input, cur_org)
-
                     } else {
                         input <- openssl::base64_encode(serialized.input)
                     }
-                    organizations[[j]] <- list(id=cur_org$id, input=input)
+                    organizations[[j]] <- list(id = cur_org$id, input = input)
                     j <- j + 1
                 }
-
             }
-            self$log$debug('input prepared')
+            self$log$debug("input prepared")
             if (length(organizations) == 0) {
-                self$log$error('No organizations.. (are your selected organization in your collaboration?)')
+                self$log$error("No organizations.. (are your selected organization in your collaboration?)")
                 return()
             }
 
 
-            task = list(
-                "name"=self$task.name,
-                "image"=self$image,
-                "master"=self$use.master.container,
-                "collaboration_id"=self$collaboration_id,
-                "organizations"=organizations,
-                "description"=""
+            task <- list(
+                "name" = self$task.name,
+                "image" = self$image,
+                "master" = self$use.master.container,
+                "collaboration_id" = self$collaboration_id,
+                "organizations" = organizations,
+                "description" = ""
             )
 
             # Create the task on the server; this returns the task with its id
-            r <- self$POST('/task', task)
+            r <- self$POST("/task", task)
             task <- httr::content(r)
 
-            self$log$info(sprintf('Task has been assigned id %i', task$id))
-            self$log$info(sprintf(' run id %i', task$id))
+            # TODO print the task details as we are not completely sure if the task is created or not
+            # as the proxy server always returns 200, see https://github.com/vantage6/vantage6/issues/1241
+            print(task)
+
+
+            self$log$info(sprintf("Task has been assigned id %i", task$id))
+            self$log$info(sprintf(" run id %i", task$id))
 
             # Wait for the results to come in
             # task <- self$wait.for.results(task)
@@ -573,6 +554,5 @@ Client <- R6::R6Class(
             return(glue::glue("vtg::Client(host='{self$host}', username='{self$username}')"))
         }
     ),
-
     private = list()
 )
