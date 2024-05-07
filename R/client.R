@@ -224,14 +224,18 @@ Client <- R6::R6Class(
                 r <- httr::GET(url, httr::add_headers(Authorization = token))
             } else if (method == "POST") {
                 r <- httr::POST(url, body = data, encode = "json", httr::add_headers(Authorization = token))
+                print("checkpoint A")
             } else if (method == "PUT") {
                 r <- httr::PUT(url, body = data, encode = "json", httr::add_headers(Authorization = token))
             }
 
+            print("checkpoint B")
+
             if (!is.element(r$status_code, c(200, 201, 202))) {
+                print("checkpoint B1")
                 msg <- sprintf("Request to '%s' was unsuccessful: %s", url, httr::http_status(r)$message)
                 self$log$debug(httr::content(r)$msg)
-
+                print("checkpoint B1.1")
                 if (first_try) {
                     self$log$error(msg)
                     self$log$warn("Refreshing token ... ")
@@ -239,9 +243,11 @@ Client <- R6::R6Class(
 
                     r <- self$request(method, path, data, first_try = F)
                 } else {
+                    print("checkpoint B2")
                     stop(msg)
                 }
             }
+            print("checkpoint C")
 
             return(r)
         },
@@ -515,6 +521,7 @@ Client <- R6::R6Class(
             )
 
             # Create the task on the server; this returns the task with its id
+            print(task)
             r <- self$POST("/task", task)
             task <- httr::content(r)
 
