@@ -523,12 +523,15 @@ Client <- R6::R6Class(
             # Create the task on the server; this returns the task with its id
             print(task)
             r <- self$POST("/task", task)
+            print("main A")
             task <- httr::content(r)
+            print("main B")
 
             # TODO print the task details as we are not completely sure if the task is created or not
             # as the proxy server always returns 200, see https://github.com/vantage6/vantage6/issues/1241
             print(r)
             print(task)
+            print("main C")
 
 
             self$log$info(sprintf("Task has been assigned id %i", task$id))
