@@ -520,6 +520,7 @@ Client <- R6::R6Class(
 
             # TODO print the task details as we are not completely sure if the task is created or not
             # as the proxy server always returns 200, see https://github.com/vantage6/vantage6/issues/1241
+            print(r)
             print(task)
 
 
