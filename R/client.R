@@ -525,6 +525,7 @@ Client <- R6::R6Class(
             r <- self$POST("/task", task)
             print("main A")
             task <- httr::content(r)
+            closeAllConnections()
             print("main B")
 
             # TODO print the task details as we are not completely sure if the task is created or not
